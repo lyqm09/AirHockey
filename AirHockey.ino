@@ -2,6 +2,12 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 
+#if CONFIG_FREERTOS_UNICORE
+#define ARDUINO_RUNNING_CORE 0
+#else
+#define ARDUINO_RUNNING_CORE 1
+#endif
+
 #define PERIPHERAL_NAME "Amp Air Hockey"
 #define SERVICE_UUID "A71120B3-6254-44BD-A27F-42A66F1732BA"
 #define CHARACTERISTIC_INPUT_UUID "E3B3CADD-710C-4A3D-9030-CB99823CB738"
@@ -10,8 +16,9 @@
 #define INPUT_PIN1 4
 #define INPUT_PIN2 5
 
-#define MAX_POINTS = 0x0A;
+#define MAX_POINTS 0x0A;
 uint8_t score[2];
+bool bonus = false;
 
 static uint8_t outputData[2];
 BLECharacteristic *pOutputChar;
@@ -47,11 +54,28 @@ void updateGame() {
   }
 }
 
-void addScore(int player, uint8_t points) {
+void addScore(int player, int points) {
   if(player < 0 || player > 1) {
     return;
   }
+  if(score[player] < 1 && points < 0) {
+    return;
+  }
   score[player] += points;
+}
+
+void asyncTask(void *pvParameters) {
+  (void) pvParameters;
+
+  while(true) {
+    vTaskDelay(pdMS_TO_TICKS((10+random(0,10))*60000));
+    //TODO: led
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    bonus = true;
+    //TODO: led
+    vTaskDelay(pdMS_TO_TICKS(60000));
+    bonus = false;
+  }
 }
 
 class ServerCallbacks: public BLEServerCallbacks {
@@ -94,6 +118,8 @@ void setup() {
 
   pService->start();
 
+  delay(1000);
+
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);
@@ -101,22 +127,26 @@ void setup() {
   pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
 
+  delay(1000);
+
   Serial.println("BLE Service is advertising");
 
   pinMode(INPUT_PIN1, INPUT);
   pinMode(INPUT_PIN2, INPUT);
+
+  xTaskCreatePinnedToCore(asyncTask, "AsyncTask", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  player1 = digitalRead(INPUT_PIN1);
-  player2 = digitalRead(INPUT_PIN2);
+  int player1 = digitalRead(INPUT_PIN1);
+  int player2 = digitalRead(INPUT_PIN2);
 
   if(player1 == HIGH) {
-    addScore(0, 0x01);
+    addScore(bonus? 0 : 1, bonus? -1 : 1);
   }
   if(player2 == HIGH) {
-    addScore(1, 0x01);
+    addScore(bonus? 1 : 0, bonus? -1 : 1);
   }
 
 }
