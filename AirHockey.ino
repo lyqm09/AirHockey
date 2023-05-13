@@ -44,17 +44,7 @@ class ServerCallbacks: public BLEServerCallbacks {
 //   void onWrite(BLECharacteristic *pCharWriteState) {
 //     uint8_t *inputValues = pCharWriteState->getData();
 //     //data
-//     if(score[0] == 0xFF) {
-//       score[0] = 0x00;
-//       score[1] = 0x00;
-//     }
-
-//     outputData[0] = score[0];
-//     outputData[1] = score[1];
-//     Serial.printf("Sending response : %02x %02x\r\n", outputData[0], outputData[1]);
-
-//     pOutputChar->setValue((uint8_t *)outputData, 2);
-//     pOutputChar->notify();
+//     
 //   }
 // };
 
