@@ -7,11 +7,14 @@
 #define CHARACTERISTIC_INPUT_UUID "E3B3CADD-710C-4A3D-9030-CB99823CB738"
 #define CHARACTERISTIC_OUTPUT_UUID "32FE11C3-1807-4D05-81B3-4A301BDC3928"
 
+#define INPUT_PIN1 4
+#define INPUT_PIN2 5
+
+#define MAX_POINTS = 0x0A;
+uint8_t score[2];
+
 static uint8_t outputData[2];
 BLECharacteristic *pOutputChar;
-
-static uint8_t points = 0x0A;
-uint8_t score[2];
 
 void sendScoreboard() {
   outputData[0] = score[0];
@@ -20,6 +23,35 @@ void sendScoreboard() {
 
   pOutputChar->setValue((uint8_t *)outputData, 2);
   pOutputChar->notify();
+}
+
+void updateGame() {
+  
+  bool isWin1 = score[0] >= MAX_POINTS;
+  bool isWin2 = score[1] >= MAX_POINTS;
+
+  if(isWin1 || isWin2) {
+    score[0] = 0xFE;
+    score[1] = isWin1? 0x00: 0x01;
+  }
+
+  sendScoreboard();
+
+  if(isWin1 || isWin2) {
+    delay(5000);
+
+    score[0] = 0x00;
+    score[1] = 0x00;
+
+    sendScoreboard();
+  }
+}
+
+void addScore(int player, uint8_t points) {
+  if(player < 0 || player > 1) {
+    return;
+  }
+  score[player] += points;
 }
 
 class ServerCallbacks: public BLEServerCallbacks {
@@ -33,20 +65,12 @@ class ServerCallbacks: public BLEServerCallbacks {
 
     sendScoreboard();
   }
-  
+
   void onDisconnect(BLEServer* pServer) {
     BLEDevice::startAdvertising();
     Serial.println("BLE Client Disconnected");
   }
 };
-
-// class InputReceivedCallbacks: public BLECharacteristicCallbacks {
-//   void onWrite(BLECharacteristic *pCharWriteState) {
-//     uint8_t *inputValues = pCharWriteState->getData();
-//     //data
-//     
-//   }
-// };
 
 void setup() {
   Serial.begin(115200);
@@ -57,11 +81,9 @@ void setup() {
 
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
-  //BLECharacteristic *pInputChar = pService->createCharacteristic(CHARACTERISTIC_INPUT_UUID, BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE);
   pOutputChar = pService->createCharacteristic(CHARACTERISTIC_OUTPUT_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
 
   pServer->setCallbacks(new ServerCallbacks());
-  //pInputChar->setCallbacks(new InputReceivedCallbacks());
 
   outputData[0] = 0xFF;
   outputData[1] = 0xFF;
@@ -80,9 +102,21 @@ void setup() {
   BLEDevice::startAdvertising();
 
   Serial.println("BLE Service is advertising");
+
+  pinMode(INPUT_PIN1, INPUT);
+  pinMode(INPUT_PIN2, INPUT);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  delay(2000);
+  player1 = digitalRead(INPUT_PIN1);
+  player2 = digitalRead(INPUT_PIN2);
+
+  if(player1 == HIGH) {
+    addScore(0, 0x01);
+  }
+  if(player2 == HIGH) {
+    addScore(1, 0x01);
+  }
+
 }
