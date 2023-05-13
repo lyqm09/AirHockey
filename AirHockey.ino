@@ -10,7 +10,7 @@
 static uint8_t outputData[2];
 BLECharacteristic *pOutputChar;
 
-static uint8_t points = 10;
+static uint8_t points = 0x0A;
 uint8_t score[2];
 
 void sendScoreboard() {
