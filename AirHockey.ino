@@ -64,7 +64,7 @@ void addScore(int player, int points) {
   score[player] += points;
 }
 
-void asyncTask(void *pvParameters) {
+void bonusAsyncTask(void *pvParameters) {
   (void) pvParameters;
 
   while(true) {
@@ -134,7 +134,7 @@ void setup() {
   pinMode(INPUT_PIN1, INPUT);
   pinMode(INPUT_PIN2, INPUT);
 
-  xTaskCreatePinnedToCore(asyncTask, "AsyncTask", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(bonusAsyncTask, "BonusAsyncTask", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 }
 
 void loop() {
