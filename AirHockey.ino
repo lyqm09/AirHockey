@@ -13,12 +13,20 @@
 #define CHARACTERISTIC_INPUT_UUID "E3B3CADD-710C-4A3D-9030-CB99823CB738"
 #define CHARACTERISTIC_OUTPUT_UUID "32FE11C3-1807-4D05-81B3-4A301BDC3928"
 
-#define INPUT_PIN1 4
-#define INPUT_PIN2 5
+#define INPUT_PIN1 27
+#define INPUT_PIN2 12
+#define OUTPUT_LEDR 32
+#define OUTPUT_LEDG 25
+#define OUTPUT_LEDB 33
+
 
 #define MAX_POINTS 0x0A;
 uint8_t score[2];
+bool hasMetal = false;
 bool bonus = false;
+uint8_t red = LOW;
+uint8_t green = LOW;
+uint8_t blue = LOW;
 
 static uint8_t outputData[2];
 BLECharacteristic *pOutputChar;
@@ -59,9 +67,11 @@ void addScore(int player, int points) {
     return;
   }
   if(score[player] < 1 && points < 0) {
+    score[(player+1)%2] += 2;
     return;
   }
   score[player] += points;
+  updateGame();
 }
 
 void bonusAsyncTask(void *pvParameters) {
@@ -69,12 +79,25 @@ void bonusAsyncTask(void *pvParameters) {
 
   while(true) {
     vTaskDelay(pdMS_TO_TICKS((10+random(0,10))*60000));
-    //TODO: led
+
+    red = LOW;
+    blue = LOW;
+    green = HIGH;
+
     vTaskDelay(pdMS_TO_TICKS(10000));
+
     bonus = true;
-    //TODO: led
+
+    red = HIGH;
+    blue = HIGH;
+    green = LOW;
+
     vTaskDelay(pdMS_TO_TICKS(60000));
     bonus = false;
+
+    red = LOW;
+    blue = LOW;
+    green = LOW;
   }
 }
 
@@ -109,6 +132,8 @@ void setup() {
 
   pServer->setCallbacks(new ServerCallbacks());
 
+  //delay(1000);
+
   outputData[0] = 0xFF;
   outputData[1] = 0xFF;
   pOutputChar->setValue((uint8_t *)outputData, 2);
@@ -116,9 +141,9 @@ void setup() {
   score[0] = 0xFF;
   score[1] = 0xFF;
 
-  pService->start();
+  //delay(1000);
 
-  delay(1000);
+  pService->start();
 
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
@@ -127,12 +152,18 @@ void setup() {
   pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
 
-  delay(1000);
+  //delay(1000);
 
   Serial.println("BLE Service is advertising");
 
+  //GOALS
   pinMode(INPUT_PIN1, INPUT);
   pinMode(INPUT_PIN2, INPUT);
+
+  //LEDS
+  pinMode(OUTPUT_LEDR, OUTPUT); 
+  pinMode(OUTPUT_LEDG, OUTPUT);
+  pinMode(OUTPUT_LEDB, OUTPUT);
 
   xTaskCreatePinnedToCore(bonusAsyncTask, "BonusAsyncTask", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 }
@@ -142,11 +173,23 @@ void loop() {
   int player1 = digitalRead(INPUT_PIN1);
   int player2 = digitalRead(INPUT_PIN2);
 
-  if(player1 == HIGH) {
+  digitalWrite(OUTPUT_LEDR, red);
+  digitalWrite(OUTPUT_LEDG, green);
+  digitalWrite(OUTPUT_LEDB, blue); 
+
+  if(player1 == HIGH && !hasMetal) {
+    hasMetal = true;
     addScore(bonus? 0 : 1, bonus? -1 : 1);
+  } else if(player1 == LOW && hasMetal) {
+    hasMetal = false;
+    delay(1000);
   }
   if(player2 == HIGH) {
+    hasMetal = true;
     addScore(bonus? 1 : 0, bonus? -1 : 1);
+  } else if(player2 == LOW && hasMetal) {
+    hasMetal = false;
+    delay(1000);
   }
 
 }
