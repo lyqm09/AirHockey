@@ -12,16 +12,18 @@ struct ScoreboardView: View {
     var fontSize: CGFloat = 200;
     var body: some View {
         @State var s1 = bluetooth.score[0];
-        var s2 = bluetooth.score[1];
+        @State var s2 = bluetooth.score[1];
         if(s1 == 0xFE) {
-            var winner = s2;
-            VStack {
-                Text("Victoire")
-                    .font(.system(size: 26.0))
-                    .foregroundColor(.white)
+            ZStack {
+                s2 == 0x00 ? Color.blue : Color.red
+                VStack {
+                    Text("Victoire")
+                        .fontWeight(.bold)
+                        .font(.system(size: 100.0))
+                        .foregroundColor(.white)
+                }
             }
-            .background(s2 == 0x00 ? Color.blue : Color.red)
-            
+            .ignoresSafeArea()
         } else {
             HStack {
                 
